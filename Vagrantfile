@@ -3,83 +3,49 @@
 
 $script = <<SCRIPT
 	export DEBIAN_FRONTEND=noninteractive
-	echo "Settaggio locale"
+	echo "Set locale"
 	apt-get -y install language-pack-en
 	update-locale LANG="en_US.UTF-8"
 	sudo su
-	echo "aggiunta del repository di BBB"
 	wget http://ubuntu.bigbluebutton.org/bigbluebutton.asc -O- |  apt-key add -
-	echo "deb http://ubuntu.bigbluebutton.org/lucid_dev_081/ bigbluebutton-lucid main" |  tee /etc/apt/sources.list.d/bigbluebutton.list
-	# echo "aggiunta del repository multiverse"
-	# echo "deb http://us.archive.ubuntu.com/ubuntu/ lucid multiverse" | tee -a /etc/apt/sources.list
-	echo "Aggiornamento del sistema"
+	echo "deb http://ubuntu.bigbluebutton.org/trusty-090/ bigbluebutton-trusty main" | sudo tee /etc/apt/sources.list.d/bigbluebutton.list
+	apt-get install software-properties-common
+	add-apt-repository ppa:libreoffice/libreoffice-4-3
+	
+	echo "Updates"
 	apt-get -q update
 	apt-get -y -q intall build-essential linux-kernel-headers
 	apt-get -q -y dist-upgrade
 
-	echo "Si comincia"
-	echo "Installazione di Libreoffice"
-	debconf-set-selections | msttcorefonts msttcorefonts/acccepted-mscorefonts-eula boolean true
-	debconf-set-selections | msttcorefonts msttcorefonts/present-mscorefonts-eula boolean false
-	wget http://bigbluebutton.googlecode.com/files/openoffice.org_1.0.4_all.deb
-	dpkg -i openoffice.org_1.0.4_all.deb
+	echo "Install ffmpeg"
+	apt-get install build-essential git-core checkinstall yasm texi2html libvorbis-dev libx11-dev libvpx-dev libxfixes-dev zlib1g-dev pkg-config netcat libncurses5-dev
 
-	apt-get -y -q install python-software-properties
+	FFMPEG_VERSION=2.3.3
 
-	apt-add-repository ppa:libreoffice/libreoffice-4-0
-	apt-get -q update
-
-	apt-get -y -q install libreoffice-common
-	apt-get -y -q install libreoffice
-
-	echo "installazione di ruby"
-	wget https://bigbluebutton.googlecode.com/files/ruby1.9.2_1.9.2-p290-1_amd64.deb
-	dpkg -i ruby1.9.2_1.9.2-p290-1_amd64.deb
- 	update-alternatives --install /usr/bin/ruby ruby /usr/bin/ruby1.9.2 500 \
-                         --slave /usr/bin/ri ri /usr/bin/ri1.9.2 \
-                         --slave /usr/bin/irb irb /usr/bin/irb1.9.2 \
-                         --slave /usr/bin/erb erb /usr/bin/erb1.9.2 \
-                         --slave /usr/bin/rdoc rdoc /usr/bin/rdoc1.9.2
- update-alternatives --install /usr/bin/gem gem /usr/bin/gem1.9.2 500
- apt-get -y -q install -f
-
-	echo "Installazione di ffmpeg"
- 	apt-get install -y -q git-core checkinstall yasm texi2html libvorbis-dev libx11-dev libxfixes-dev zlib1g-dev pkg-config
-
-	LIBVPX_VERSION=1.2.0
-	FFMPEG_VERSION=2.0.1
-
-	if [ ! -d "/usr/local/src/libvpx-${LIBVPX_VERSION}" ]; then
-		cd /usr/local/src
-		git clone http://git.chromium.org/webm/libvpx.git "libvpx-${LIBVPX_VERSION}"
-		cd "libvpx-${LIBVPX_VERSION}"
-		git checkout "v${LIBVPX_VERSION}"
-		./configure
-		make
-		checkinstall --pkgname=libvpx --pkgversion="${LIBVPX_VERSION}" --backup=no --deldoc=yes --default
-	fi
-
+	cd /usr/local/src
 	if [ ! -d "/usr/local/src/ffmpeg-${FFMPEG_VERSION}" ]; then
-		cd /usr/local/src
-		wget "http://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
-		tar -xjf "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
-		cd "ffmpeg-${FFMPEG_VERSION}"
-		./configure --enable-version3 --enable-postproc --enable-libvorbis --enable-libvpx
-		make
-		checkinstall --pkgname=ffmpeg --pkgversion="5:${FFMPEG_VERSION}" --backup=no --deldoc=yes --default
+	  sudo wget "http://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+	  sudo tar -xjf "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 	fi
+
+	cd "ffmpeg-${FFMPEG_VERSION}"
+	sudo ./configure --enable-version3 --enable-postproc --enable-libvorbis --enable-libvpx
+	make
+	checkinstall --pkgname=ffmpeg --pkgversion="5:${FFMPEG_VERSION}" --backup=no --deldoc=yes --default
+	chmod +x install-ffmpeg.sh
+	./install-ffmpeg.sh
 
 	echo "Installazione di BBB"
 	apt-get -y -q install bigbluebutton
 	apt-get -y -q install bbb-demo
 	
-	echo "Pulizia"
-	apt-get -y -q autoremove
-	apt-get -y clean
-	echo "Avvio di BBB"
-	bbb-conf --clean
-	bbb-conf --check
-	bbb-conf --setip 192.168.33.10
+#	echo "Pulizia"
+#	apt-get -y -q autoremove
+#	apt-get -y clean
+#	echo "Avvio di BBB"
+#	bbb-conf --clean
+#	bbb-conf --check
+#	bbb-conf --setip 192.168.33.10
 	exit
 SCRIPT
 # Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
@@ -91,27 +57,27 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # please see the online documentation at vagrantup.com.
 
   # Every Vagrant virtual environment requires a box to build off of.
-  config.vm.box = "lucid64"
+  config.vm.box = "ubuntu/trusty64"
 
   # The url from where the 'config.vm.box' box will be fetched if it
   # doesn't already exist on the user's system.
-  config.vm.box_url = "http://files.vagrantup.com/lucid64.box"
+  config.vm.box_url = "http://files.vagrantup.com/trusty64.box"
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
-  # config.vm.network :forwarded_port, guest: 80, host: 8080
-  # config.vm.network :forwarded_port, guest: 9123, host: 9123
-  # config.vm.network :forwarded_port, guest: 1935, host: 9135
+  #config.vm.network :forwarded_port, guest: 80, host: 8080
+  #config.vm.network :forwarded_port, guest: 9123, host: 9123
+  #config.vm.network :forwarded_port, guest: 1935, host: 8935
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
-  config.vm.network :private_network, ip: "192.168.33.10"
+#  config.vm.network :private_network, ip: "192.168.33.10"
 
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
   # your network.
-  # config.vm.network :public_network
+  config.vm.network :public_network, bridge: 'eth1', ip: "192.168.1.9"
 
   # If true, then any SSH connections made will enable agent forwarding.
   # Default value: false
@@ -128,7 +94,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # Example for VirtualBox:
   #
    config.vm.provider :virtualbox do |vb|
-			vb.memory = 1024
+			vb.memory = 4096
   #   # Don't boot with headless mode
   #   vb.gui = true
   #
